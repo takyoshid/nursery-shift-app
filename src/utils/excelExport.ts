@@ -43,7 +43,7 @@ export function exportToExcel(
     const cells = days.map((d) => {
       const dateStr = formatDate(d);
       const shift = staffShifts[dateStr] ?? '';
-      if (shift && shift !== '休み' && shift !== '有休' && shift !== '') {
+      if (shift && shift !== '休み' && shift !== '有休') {
         workDays++;
       }
       return shift;

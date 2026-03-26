@@ -7,7 +7,7 @@ export interface Staff {
   employmentType: EmploymentType;
 }
 
-export type ShiftType = '早番' | '遅番' | '日勤' | '休み' | '有休' | '';
+export type ShiftType = 'A"' | 'A' | 'B"' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | '休み' | '有休' | '';
 
 export interface ShiftEntry {
   staffId: string;
