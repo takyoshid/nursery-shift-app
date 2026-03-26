@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(mv /Users/takuyayoshida/nursery-shift-app/nursery-temp/* /Users/takuyayoshida/nursery-shift-app/)",
+      "Bash(mv /Users/takuyayoshida/nursery-shift-app/nursery-temp/.gitignore /Users/takuyayoshida/nursery-shift-app/)",
+      "Bash(rmdir /Users/takuyayoshida/nursery-shift-app/nursery-temp)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(./node_modules/.bin/tailwindcss init:*)",
+      "Bash(npm run:*)",
+      "Bash(git -C /Users/takuyayoshida/nursery-shift-app status)",
+      "Bash(gh auth:*)",
+      "Bash(export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\")",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
