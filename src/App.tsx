@@ -3,9 +3,10 @@ import type { Staff, ShiftEntry, ShiftType, AppData } from './types';
 import { loadData, saveData } from './utils/storage';
 import StaffManager from './components/StaffManager';
 import ShiftTable from './components/ShiftTable';
+import Settings from './components/Settings';
 import './index.css';
 
-type View = 'shift' | 'staff';
+type View = 'shift' | 'staff' | 'settings';
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -18,6 +19,12 @@ const App: React.FC = () => {
   const persist = useCallback((newData: AppData) => {
     setData(newData);
     saveData(newData);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    localStorage.removeItem('nursery-shift-app-data');
+    setData(loadData());
+    setView('shift');
   }, []);
 
   // Staff handlers
@@ -111,6 +118,17 @@ const App: React.FC = () => {
             >
               👥 スタッフ管理
             </button>
+            <button
+              onClick={() => setView('settings')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition
+                ${
+                  view === 'settings'
+                    ? 'border-pink-500 text-pink-700 bg-pink-50/50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
+                }`}
+            >
+              ⚙️ 設定
+            </button>
           </div>
         </div>
       </div>
@@ -123,13 +141,15 @@ const App: React.FC = () => {
             shifts={data.shifts}
             onShiftChange={handleShiftChange}
           />
-        ) : (
+        ) : view === 'staff' ? (
           <StaffManager
             staffList={data.staffList}
             onAdd={handleAddStaff}
             onEdit={handleEditStaff}
             onDelete={handleDeleteStaff}
           />
+        ) : (
+          <Settings onReset={handleReset} />
         )}
       </main>
     </div>
