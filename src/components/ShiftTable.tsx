@@ -83,8 +83,8 @@ const ShiftTable: React.FC<Props> = ({ staffList, shifts, events, training, onSh
     }
   };
 
-  const handleExport = () => {
-    exportToExcel(staffList, shifts, year, month, events, training);
+  const handleExport = async () => {
+    await exportToExcel(staffList, shifts, year, month, events, training);
   };
 
   const today = formatDate(new Date());

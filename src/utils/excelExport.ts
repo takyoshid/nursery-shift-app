@@ -1,13 +1,10 @@
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import type { Staff, ShiftEntry } from '../types';
 
 function getDaysInMonth(year: number, month: number): Date[] {
-  const days: Date[] = [];
-  const daysCount = new Date(year, month + 1, 0).getDate();
-  for (let d = 1; d <= daysCount; d++) {
-    days.push(new Date(year, month, d));
-  }
-  return days;
+  const count = new Date(year, month + 1, 0).getDate();
+  return Array.from({ length: count }, (_, i) => new Date(year, month, i + 1));
 }
 
 function formatDate(date: Date): string {
@@ -19,70 +16,98 @@ function formatDate(date: Date): string {
 
 const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
-// textRotation: 255 = Excel の縦書き（CJK文字を縦に積む）
-const VERTICAL_STYLE = { alignment: { textRotation: 255, vertical: 'center', horizontal: 'center' } };
-const CENTER_STYLE   = { alignment: { vertical: 'center', horizontal: 'center' } };
-
-export function exportToExcel(
+export async function exportToExcel(
   staffList: Staff[],
   shifts: ShiftEntry[],
   year: number,
   month: number,
   events: Record<string, string>,
   training: Record<string, string>
-): void {
+): Promise<void> {
   const days = getDaysInMonth(year, month);
 
-  const headerRow1  = ['スタッフ名', ...days.map((d) => `${d.getDate()}日`), '出勤日数'];
-  const headerRow2  = ['役職',       ...days.map((d) => DOW_LABELS[d.getDay()]), ''];
-  const eventsRow   = ['行事予定',   ...days.map((d) => events[formatDate(d)]   ?? ''), ''];
-  const trainingRow = ['地域・研修等', ...days.map((d) => training[formatDate(d)] ?? ''), ''];
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(`${year}年${month + 1}月`);
 
+  // 列幅設定（スタッフ名列 + 日付列 + 出勤日数列）
+  ws.columns = [
+    { width: 12 },
+    ...days.map(() => ({ width: 6 })),
+    { width: 8 },
+  ];
+
+  // ヘッダー行1: 日付
+  const hRow1 = ws.addRow(['スタッフ名', ...days.map((d) => `${d.getDate()}日`), '出勤日数']);
+  hRow1.eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4EC' } };
+  });
+
+  // ヘッダー行2: 曜日
+  const hRow2 = ws.addRow(['役職', ...days.map((d) => DOW_LABELS[d.getDay()]), '']);
+  hRow2.eachCell((cell, colNo) => {
+    const dow = days[colNo - 2]?.getDay();
+    const isSun = dow === 0;
+    const isSat = dow === 6;
+    cell.font = { bold: true, color: { argb: isSun ? 'FFEF5350' : isSat ? 'FF1565C0' : 'FF555555' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4EC' } };
+  });
+
+  // 行事予定行
+  const eventsRowData = ['行事予定', ...days.map((d) => events[formatDate(d)] ?? ''), ''];
+  const evRow = ws.addRow(eventsRowData);
+  evRow.height = 60;
+  evRow.getCell(1).font = { bold: true, color: { argb: 'FF9C1A1A' } };
+  evRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4EC' } };
+  evRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+  days.forEach((_d, i) => {
+    const cell = evRow.getCell(i + 2);
+    cell.alignment = { textRotation: 255, vertical: 'top', horizontal: 'center', wrapText: true };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF0F0' } };
+  });
+
+  // 地域・研修等行
+  const trainingRowData = ['地域・研修等', ...days.map((d) => training[formatDate(d)] ?? ''), ''];
+  const trRow = ws.addRow(trainingRowData);
+  trRow.height = 60;
+  trRow.getCell(1).font = { bold: true, color: { argb: 'FF0D4F3C' } };
+  trRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2F1' } };
+  trRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+  days.forEach((_d, i) => {
+    const cell = trRow.getCell(i + 2);
+    cell.alignment = { textRotation: 255, vertical: 'top', horizontal: 'center', wrapText: true };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2F1' } };
+  });
+
+  // シフトデータ行
   const shiftMap: Record<string, Record<string, string>> = {};
   for (const entry of shifts) {
     if (!shiftMap[entry.staffId]) shiftMap[entry.staffId] = {};
     shiftMap[entry.staffId][entry.date] = entry.shiftType;
   }
 
-  const dataRows = staffList.map((staff) => {
+  staffList.forEach((staff) => {
     const staffShifts = shiftMap[staff.id] ?? {};
     let workDays = 0;
     const cells = days.map((d) => {
-      const dateStr = formatDate(d);
-      const shift = staffShifts[dateStr] ?? '';
+      const shift = staffShifts[formatDate(d)] ?? '';
       if (shift && shift !== '休み' && shift !== '有休') workDays++;
       return shift;
     });
-    return [staff.name, ...cells, workDays];
-  });
-
-  const allRows = [headerRow1, headerRow2, eventsRow, trainingRow, ...dataRows];
-
-  // セルを手動構築してスタイルを確実に適用
-  const ws: XLSX.WorkSheet = {};
-  let maxC = 0;
-  allRows.forEach((row, r) => {
-    row.forEach((val, c) => {
-      const addr = XLSX.utils.encode_cell({ r, c });
-      const isNoteDataCell = (r === 2 || r === 3) && c >= 1 && c <= days.length;
-      const isShiftDataCell = r >= 4 && c >= 1 && c <= days.length;
-      ws[addr] = {
-        t: typeof val === 'number' ? 'n' : 's',
-        v: val,
-        s: isNoteDataCell ? VERTICAL_STYLE : isShiftDataCell ? CENTER_STYLE : {},
-      };
-      if (c > maxC) maxC = c;
+    const row = ws.addRow([staff.name, ...cells, workDays]);
+    row.getCell(1).alignment = { vertical: 'middle' };
+    days.forEach((_, i) => {
+      row.getCell(i + 2).alignment = { vertical: 'middle', horizontal: 'center' };
     });
+    row.getCell(days.length + 2).alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell(days.length + 2).font = { bold: true };
   });
-  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: allRows.length - 1, c: maxC } });
 
-  // 列幅を統一 (画面 w-12 = 48px に合わせる)
-  const dayCol = { wpx: 48 };
-  ws['!cols'] = [{ wpx: 90 }, ...days.map(() => dayCol), { wpx: 56 }];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, `${year}年${month + 1}月`);
-
-  const fileName = `保育園シフト表_${year}年${String(month + 1).padStart(2, '0')}月.xlsx`;
-  XLSX.writeFile(wb, fileName);
+  // ダウンロード
+  const buffer = await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+    `保育園シフト表_${year}年${String(month + 1).padStart(2, '0')}月.xlsx`
+  );
 }
