@@ -54,7 +54,7 @@ const defaultStaffList = defaultStaff.map((s, i) => ({
   group: s.group,
 }));
 
-const defaultData: AppData = { staffList: defaultStaffList, shifts: [], events: {}, training: {} };
+const defaultData: AppData = { staffList: defaultStaffList, shifts: [], events: {}, training: {}, leaveRequests: {} };
 
 export function loadData(): AppData {
   try {
@@ -68,6 +68,7 @@ export function loadData(): AppData {
       shifts: parsed.shifts ?? [],
       events: parsed.events ?? {},
       training: parsed.training ?? {},
+      leaveRequests: parsed.leaveRequests ?? {},
     };
   } catch {
     return defaultData;

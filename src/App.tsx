@@ -3,10 +3,11 @@ import type { Staff, ShiftEntry, ShiftType, AppData } from './types';
 import { loadData, saveData } from './utils/storage';
 import StaffManager from './components/StaffManager';
 import ShiftTable from './components/ShiftTable';
+import LeaveRequests from './components/LeaveRequests';
 import Settings from './components/Settings';
 import './index.css';
 
-type View = 'shift' | 'staff' | 'settings';
+type View = 'shift' | 'leave' | 'staff' | 'settings';
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -57,6 +58,38 @@ const App: React.FC = () => {
   const handleNoteChange = useCallback(
     (type: 'events' | 'training', date: string, value: string) => {
       persist({ ...data, [type]: { ...data[type], [date]: value } });
+    },
+    [data, persist]
+  );
+
+  // Leave request handlers
+  const handleLeaveToggle = useCallback(
+    (staffId: string, date: string) => {
+      const current = data.leaveRequests[staffId] ?? [];
+      const updated = current.includes(date)
+        ? current.filter((d) => d !== date)
+        : [...current, date];
+      persist({ ...data, leaveRequests: { ...data.leaveRequests, [staffId]: updated } });
+    },
+    [data, persist]
+  );
+
+  const handleApplyLeave = useCallback(
+    ({ year, month }: { year: number; month: number }) => {
+      const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+      let shifts = [...data.shifts];
+      for (const [staffId, dates] of Object.entries(data.leaveRequests)) {
+        for (const date of dates) {
+          if (!date.startsWith(prefix)) continue;
+          const idx = shifts.findIndex((s) => s.staffId === staffId && s.date === date);
+          if (idx >= 0) {
+            shifts[idx] = { ...shifts[idx], shiftType: '休み' };
+          } else {
+            shifts.push({ staffId, date, shiftType: '休み' });
+          }
+        }
+      }
+      persist({ ...data, shifts });
     },
     [data, persist]
   );
@@ -128,6 +161,17 @@ const App: React.FC = () => {
               📋 シフト表
             </button>
             <button
+              onClick={() => setView('leave')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition
+                ${
+                  view === 'leave'
+                    ? 'border-pink-500 text-pink-700 bg-pink-50/50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
+                }`}
+            >
+              🗓️ 休暇希望
+            </button>
+            <button
               onClick={() => setView('staff')}
               className={`px-6 py-3 text-sm font-medium border-b-2 transition
                 ${
@@ -164,6 +208,14 @@ const App: React.FC = () => {
             onShiftChange={handleShiftChange}
             onNoteChange={handleNoteChange}
             onEventsImport={handleEventsImport}
+          />
+        ) : view === 'leave' ? (
+          <LeaveRequests
+            staffList={data.staffList}
+            shifts={data.shifts}
+            leaveRequests={data.leaveRequests}
+            onLeaveToggle={handleLeaveToggle}
+            onApply={handleApplyLeave}
           />
         ) : view === 'staff' ? (
           <StaffManager
