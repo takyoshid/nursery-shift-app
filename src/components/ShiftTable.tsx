@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import type { Staff, ShiftEntry, ShiftType } from '../types';
+import type { Staff, ShiftEntry, ShiftType, StaffGroup } from '../types';
+import { GROUP_STYLES } from '../types';
 import ShiftCell from './ShiftCell';
 import { exportToExcel } from '../utils/excelExport';
 
@@ -198,57 +199,68 @@ const ShiftTable: React.FC<Props> = ({ staffList, shifts, onShiftChange }) => {
               {staffList.map((staff, sIdx) => {
                 const staffShifts = shiftMap[staff.id] ?? {};
                 const workDays = countWorkDays(staff.id, shifts, days);
+                const prevStaff = staffList[sIdx - 1];
+                const isGroupStart = sIdx === 0 || prevStaff?.group !== staff.group;
+                const gs = GROUP_STYLES[staff.group as StaffGroup] ?? GROUP_STYLES['その他'];
                 return (
-                  <tr
-                    key={staff.id}
-                    className={`${sIdx % 2 === 0 ? 'bg-white' : 'bg-pink-50/20'} hover:bg-yellow-50/40 transition`}
-                  >
-                    {/* Staff name */}
-                    <td
-                      className={`sticky left-0 z-10 border-b border-r border-pink-100 px-3 py-1.5 font-medium text-gray-800 min-w-[120px]
-                        ${sIdx % 2 === 0 ? 'bg-white' : 'bg-pink-50/30'}
-                      `}
-                    >
-                      <div>{staff.name}</div>
-                      <div className="text-[10px] text-gray-400">{staff.role}</div>
-                    </td>
-
-                    {/* Shift cells */}
-                    {days.map((d) => {
-                      const dateStr = formatDate(d);
-                      const dow = d.getDay();
-                      const isSunday = dow === 0;
-                      const isSaturday = dow === 6;
-                      const shiftType = staffShifts[dateStr] ?? '';
-                      const isToday = dateStr === today;
-                      return (
+                  <React.Fragment key={staff.id}>
+                    {/* Group header row */}
+                    {isGroupStart && (
+                      <tr>
                         <td
-                          key={dateStr}
-                          className={`border-b border-r border-pink-100 p-0.5 w-12
-                            ${isSunday ? 'bg-red-50/60' : isSaturday ? 'bg-blue-50/40' : ''}
-                            ${isToday ? 'ring-1 ring-inset ring-yellow-400' : ''}
-                          `}
+                          colSpan={days.length + 2}
+                          className={`sticky left-0 px-3 py-1 text-xs font-bold tracking-wide border-b border-t border-pink-100 ${gs.headerBg} ${gs.headerText}`}
                         >
-                          <ShiftCell
-                            shiftType={shiftType}
-                            onChange={(newShift) => onShiftChange(staff.id, dateStr, newShift)}
-                            isWeekend={isSaturday}
-                            isSunday={isSunday}
-                          />
+                          ▍{staff.group}
                         </td>
-                      );
-                    })}
+                      </tr>
+                    )}
+                    {/* Staff row */}
+                    <tr className={`${gs.bg} hover:brightness-95 transition`}>
+                      {/* Staff name */}
+                      <td
+                        className={`sticky left-0 z-10 border-b border-r border-pink-100 px-3 py-1.5 font-medium min-w-[120px] ${gs.bg} ${gs.text}`}
+                      >
+                        <div>{staff.name}</div>
+                        <div className="text-[10px] opacity-60">{staff.role}</div>
+                      </td>
 
-                    {/* Work days count */}
-                    <td
-                      className={`sticky right-0 z-10 border-b border-l border-pink-100 text-center font-bold min-w-[56px]
-                        ${workDays >= 20 ? 'text-pink-600' : 'text-gray-600'}
-                        ${sIdx % 2 === 0 ? 'bg-white' : 'bg-pink-50/30'}
-                      `}
-                    >
-                      {workDays}
-                    </td>
-                  </tr>
+                      {/* Shift cells */}
+                      {days.map((d) => {
+                        const dateStr = formatDate(d);
+                        const dow = d.getDay();
+                        const isSunday = dow === 0;
+                        const isSaturday = dow === 6;
+                        const shiftType = staffShifts[dateStr] ?? '';
+                        const isToday = dateStr === today;
+                        return (
+                          <td
+                            key={dateStr}
+                            className={`border-b border-r border-pink-100 p-0.5 w-12
+                              ${isSunday ? 'bg-red-50/60' : isSaturday ? 'bg-blue-50/40' : ''}
+                              ${isToday ? 'ring-1 ring-inset ring-yellow-400' : ''}
+                            `}
+                          >
+                            <ShiftCell
+                              shiftType={shiftType}
+                              onChange={(newShift) => onShiftChange(staff.id, dateStr, newShift)}
+                              isWeekend={isSaturday}
+                              isSunday={isSunday}
+                            />
+                          </td>
+                        );
+                      })}
+
+                      {/* Work days count */}
+                      <td
+                        className={`sticky right-0 z-10 border-b border-l border-pink-100 text-center font-bold min-w-[56px] ${gs.bg}
+                          ${workDays >= 20 ? 'text-pink-600' : 'text-gray-600'}
+                        `}
+                      >
+                        {workDays}
+                      </td>
+                    </tr>
+                  </React.Fragment>
                 );
               })}
             </tbody>

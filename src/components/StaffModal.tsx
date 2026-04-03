@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import type { Staff, EmploymentType } from '../types';
+import type { Staff, EmploymentType, StaffGroup } from '../types';
+import { STAFF_GROUPS } from '../types';
 
 interface Props {
   staff: Staff | null;
@@ -13,16 +14,19 @@ const StaffModal: React.FC<Props> = ({ staff, onSave, onClose }) => {
   const [name, setName] = useState('');
   const [role, setRole] = useState('保育士');
   const [employmentType, setEmploymentType] = useState<EmploymentType>('fulltime');
+  const [group, setGroup] = useState<StaffGroup>('乳児クラス');
 
   useEffect(() => {
     if (staff) {
       setName(staff.name);
       setRole(staff.role);
       setEmploymentType(staff.employmentType);
+      setGroup(staff.group);
     } else {
       setName('');
       setRole('保育士');
       setEmploymentType('fulltime');
+      setGroup('乳児クラス');
     }
   }, [staff]);
 
@@ -34,6 +38,7 @@ const StaffModal: React.FC<Props> = ({ staff, onSave, onClose }) => {
       name: name.trim(),
       role,
       employmentType,
+      group,
     });
   };
 
@@ -64,6 +69,19 @@ const StaffModal: React.FC<Props> = ({ staff, onSave, onClose }) => {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">グループ</label>
+            <select
+              value={group}
+              onChange={(e) => setGroup(e.target.value as StaffGroup)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 bg-white"
+            >
+              {STAFF_GROUPS.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
           </div>
 
           <div>

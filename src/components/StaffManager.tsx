@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import type { Staff } from '../types';
+import type { Staff, StaffGroup } from '../types';
+import { GROUP_STYLES } from '../types';
 import StaffModal from './StaffModal';
 
 interface Props {
@@ -33,7 +34,7 @@ const StaffManager: React.FC<Props> = ({ staffList, onAdd, onEdit, onDelete }) =
     if (data.id) {
       onEdit(data as Staff);
     } else {
-      onAdd({ name: data.name, role: data.role, employmentType: data.employmentType });
+      onAdd({ name: data.name, role: data.role, employmentType: data.employmentType, group: data.group });
     }
     setModalOpen(false);
   };
@@ -62,6 +63,7 @@ const StaffManager: React.FC<Props> = ({ staffList, onAdd, onEdit, onDelete }) =
             <thead>
               <tr className="bg-pink-50 text-pink-700">
                 <th className="text-left px-4 py-3 font-medium">名前</th>
+                <th className="text-left px-4 py-3 font-medium">グループ</th>
                 <th className="text-left px-4 py-3 font-medium">役職</th>
                 <th className="text-left px-4 py-3 font-medium">雇用形態</th>
                 <th className="px-4 py-3 font-medium text-right">操作</th>
@@ -74,6 +76,16 @@ const StaffManager: React.FC<Props> = ({ staffList, onAdd, onEdit, onDelete }) =
                   className={`border-t border-pink-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-pink-50/30'} hover:bg-pink-50/60 transition`}
                 >
                   <td className="px-4 py-3 font-medium text-gray-800">{staff.name}</td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const gs = GROUP_STYLES[staff.group as StaffGroup] ?? GROUP_STYLES['その他'];
+                      return (
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${gs.headerBg} ${gs.headerText}`}>
+                          {staff.group}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">{staff.role}</td>
                   <td className="px-4 py-3">
                     <span
