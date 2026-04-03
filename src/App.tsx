@@ -61,6 +61,18 @@ const App: React.FC = () => {
     [data, persist]
   );
 
+  const handleEventsImport = useCallback(
+    (imported: Record<string, string>) => {
+      // 既存データとマージ（同じ日付は改行で結合）
+      const merged = { ...data.events };
+      for (const [date, name] of Object.entries(imported)) {
+        merged[date] = merged[date] ? `${merged[date]}\n${name}` : name;
+      }
+      persist({ ...data, events: merged });
+    },
+    [data, persist]
+  );
+
   // Shift handlers
   const handleShiftChange = useCallback(
     (staffId: string, date: string, shiftType: ShiftType) => {
@@ -151,6 +163,7 @@ const App: React.FC = () => {
             training={data.training}
             onShiftChange={handleShiftChange}
             onNoteChange={handleNoteChange}
+            onEventsImport={handleEventsImport}
           />
         ) : view === 'staff' ? (
           <StaffManager

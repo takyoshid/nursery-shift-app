@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import type { Staff, ShiftEntry, ShiftType, StaffGroup } from '../types';
 import { GROUP_STYLES } from '../types';
 import ShiftCell from './ShiftCell';
 import NoteCell from './NoteCell';
 import { exportToExcel } from '../utils/excelExport';
+import { importEventsFromExcel } from '../utils/importEvents';
 
 interface Props {
   staffList: Staff[];
@@ -12,6 +13,7 @@ interface Props {
   training: Record<string, string>;
   onShiftChange: (staffId: string, date: string, shiftType: ShiftType) => void;
   onNoteChange: (type: 'events' | 'training', date: string, value: string) => void;
+  onEventsImport: (imported: Record<string, string>) => void;
 }
 
 const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -49,10 +51,30 @@ function countWorkDays(staffId: string, shifts: ShiftEntry[], dates: Date[]): nu
   ).length;
 }
 
-const ShiftTable: React.FC<Props> = ({ staffList, shifts, events, training, onShiftChange, onNoteChange }) => {
+const ShiftTable: React.FC<Props> = ({ staffList, shifts, events, training, onShiftChange, onNoteChange, onEventsImport }) => {
   const now = new Date();
   const [year, setYear] = React.useState(now.getFullYear());
   const [month, setMonth] = React.useState(now.getMonth());
+  const [importing, setImporting] = React.useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const imported = await importEventsFromExcel(file);
+      onEventsImport(imported);
+    } catch (err) {
+      alert('読み込みに失敗しました。列A:日付、列B:行事名 の形式か確認してください。');
+      console.error(err);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
 
   const days = useMemo(() => getDaysInMonth(year, month), [year, month]);
 
@@ -126,6 +148,21 @@ const ShiftTable: React.FC<Props> = ({ staffList, shifts, events, training, onSh
               </span>
             ))}
           </div>
+          {/* 行事予定インポート */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <button
+            onClick={handleImportClick}
+            disabled={importing}
+            className="bg-rose-400 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2"
+          >
+            <span>📅</span> {importing ? '読込中…' : '行事取込'}
+          </button>
           <button
             onClick={handleExport}
             disabled={staffList.length === 0}
@@ -161,6 +198,7 @@ const ShiftTable: React.FC<Props> = ({ staffList, shifts, events, training, onSh
                   const isSaturday = dow === 6;
                   const dateStr = formatDate(d);
                   const isToday = dateStr === today;
+                  const hasEvent = !!events[dateStr];
                   return (
                     <th
                       key={d.getDate()}
@@ -168,8 +206,12 @@ const ShiftTable: React.FC<Props> = ({ staffList, shifts, events, training, onSh
                         ${isSunday ? 'bg-red-50 text-red-500' : isSaturday ? 'bg-blue-50 text-blue-500' : 'text-gray-600'}
                         ${isToday ? 'ring-2 ring-inset ring-yellow-400' : ''}
                       `}
+                      title={hasEvent ? events[dateStr] : undefined}
                     >
                       {d.getDate()}
+                      {hasEvent && (
+                        <span className="block text-[8px] leading-none text-rose-500">●</span>
+                      )}
                     </th>
                   );
                 })}
