@@ -23,13 +23,19 @@ export function exportToExcel(
   staffList: Staff[],
   shifts: ShiftEntry[],
   year: number,
-  month: number
+  month: number,
+  events: Record<string, string>,
+  training: Record<string, string>
 ): void {
   const days = getDaysInMonth(year, month);
 
   // Build header row: [スタッフ名, ...日付ラベル, 出勤日数]
   const headerRow1 = ['スタッフ名', ...days.map((d) => `${d.getDate()}日`), '出勤日数'];
   const headerRow2 = ['役職', ...days.map((d) => DOW_LABELS[d.getDay()]), ''];
+
+  // 行事予定・地域研修行
+  const eventsRow  = ['行事予定',   ...days.map((d) => events[formatDate(d)]   ?? ''), ''];
+  const trainingRow = ['地域・研修等', ...days.map((d) => training[formatDate(d)] ?? ''), ''];
 
   const shiftMap: Record<string, Record<string, string>> = {};
   for (const entry of shifts) {
@@ -51,7 +57,7 @@ export function exportToExcel(
     return [staff.name, ...cells, workDays];
   });
 
-  const wsData = [headerRow1, headerRow2, ...dataRows];
+  const wsData = [headerRow1, headerRow2, eventsRow, trainingRow, ...dataRows];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
   // Column widths
