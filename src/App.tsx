@@ -88,6 +88,23 @@ const App: React.FC = () => {
     [data, persist]
   );
 
+  const handleUnapplyLeave = useCallback(
+    ({ year, month }: { year: number; month: number }) => {
+      const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+      // 休暇希望日かつ休みになっているシフトのみ削除
+      const requestedDates = new Set(
+        Object.entries(data.leaveRequests).flatMap(([staffId, dates]) =>
+          dates.filter((d) => d.startsWith(prefix)).map((d) => `${staffId}_${d}`)
+        )
+      );
+      const shifts = data.shifts.filter(
+        (s) => !(s.shiftType === '休み' && requestedDates.has(`${s.staffId}_${s.date}`))
+      );
+      persist({ ...data, shifts });
+    },
+    [data, persist]
+  );
+
   const handleApplyLeave = useCallback(
     ({ year, month }: { year: number; month: number }) => {
       const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -231,6 +248,7 @@ const App: React.FC = () => {
             onLeaveToggle={handleLeaveToggle}
             onApply={handleApplyLeave}
             onReset={handleLeaveReset}
+            onUnapply={handleUnapplyLeave}
           />
         ) : view === 'staff' ? (
           <StaffManager

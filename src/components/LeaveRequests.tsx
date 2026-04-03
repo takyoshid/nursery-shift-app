@@ -9,6 +9,7 @@ interface Props {
   onLeaveToggle: (staffId: string, date: string) => void;
   onApply: (month: { year: number; month: number }) => void;
   onReset: (month: { year: number; month: number }) => void;
+  onUnapply: (month: { year: number; month: number }) => void;
 }
 
 const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -26,13 +27,14 @@ function formatDate(date: Date): string {
 }
 
 const LeaveRequests: React.FC<Props> = ({
-  staffList, shifts, leaveRequests, onLeaveToggle, onApply, onReset,
+  staffList, shifts, leaveRequests, onLeaveToggle, onApply, onReset, onUnapply,
 }) => {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [applied, setApplied] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmUnapply, setConfirmUnapply] = useState(false);
 
   const days = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const today = formatDate(now);
@@ -75,6 +77,12 @@ const LeaveRequests: React.FC<Props> = ({
     setApplied(false);
   };
 
+  const handleUnapply = () => {
+    onUnapply({ year, month });
+    setConfirmUnapply(false);
+    setApplied(false);
+  };
+
   // 希望合計件数（今月）
   const totalRequests = staffList.reduce((sum, s) => sum + countRequests(s.id), 0);
 
@@ -105,6 +113,23 @@ const LeaveRequests: React.FC<Props> = ({
               className="px-3 py-2 rounded-lg text-sm font-medium transition bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               🗑 リセット
+            </button>
+          )}
+
+          {/* 反映取消ボタン */}
+          {confirmUnapply ? (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-orange-500 font-medium">反映した休みを取消？</span>
+              <button onClick={handleUnapply} className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-2 py-1.5 rounded-lg transition">取消実行</button>
+              <button onClick={() => setConfirmUnapply(false)} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1.5 rounded-lg transition">戻る</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmUnapply(true)}
+              disabled={totalRequests === 0}
+              className="px-3 py-2 rounded-lg text-sm font-medium transition bg-orange-50 text-orange-500 hover:bg-orange-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ↩ 反映取消
             </button>
           )}
 
