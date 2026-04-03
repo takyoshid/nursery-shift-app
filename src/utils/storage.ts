@@ -36,26 +36,35 @@ const defaultStaff: { name: string; group: StaffGroup }[] = [
   { name: '宮田',   group: '加配' },
   { name: '佐藤の', group: '加配' },
   { name: 'Legend', group: 'その他' },
+  { name: '橋本',   group: 'その他' },
+  { name: '金子',   group: 'その他' },
+  { name: '川島',   group: 'その他' },
+  { name: '都倉',   group: 'その他' },
+  { name: '高際',   group: 'その他' },
+  { name: '笠井',   group: 'その他' },
+  { name: '齋藤れ', group: 'その他' },
+  { name: '村松',   group: 'その他' },
 ];
 
-const defaultData: AppData = {
-  staffList: defaultStaff.map((s, i) => ({
-    id: `default-${i}`,
-    name: s.name,
-    role: '保育士',
-    employmentType: 'fulltime' as const,
-    group: s.group,
-  })),
-  shifts: [],
-};
+const defaultStaffList = defaultStaff.map((s, i) => ({
+  id: `default-${i}`,
+  name: s.name,
+  role: s.group === 'その他' ? '補助スタッフ' : '保育士',
+  employmentType: (s.group === 'その他' ? 'parttime' : 'fulltime') as 'fulltime' | 'parttime',
+  group: s.group,
+}));
+
+const defaultData: AppData = { staffList: defaultStaffList, shifts: [] };
 
 export function loadData(): AppData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultData;
     const parsed = JSON.parse(raw);
+    const existingIds = new Set<string>((parsed.staffList ?? []).map((s: { id: string }) => s.id));
+    const newStaff = defaultStaffList.filter((s) => !existingIds.has(s.id));
     return {
-      staffList: parsed.staffList ?? [],
+      staffList: [...(parsed.staffList ?? []), ...newStaff],
       shifts: parsed.shifts ?? [],
     };
   } catch {
