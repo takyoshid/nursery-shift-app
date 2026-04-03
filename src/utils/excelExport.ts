@@ -60,8 +60,20 @@ export function exportToExcel(
   const wsData = [headerRow1, headerRow2, eventsRow, trainingRow, ...dataRows];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  // Column widths
-  ws['!cols'] = [{ wch: 12 }, ...days.map(() => ({ wch: 6 })), { wch: 8 }];
+  // 列幅: 画面の w-12 (48px) に合わせて統一。wpx=48, wch=6 を全日付列に適用
+  const dayCol = { wpx: 48, wch: 6 };
+  ws['!cols'] = [{ wpx: 90, wch: 12 }, ...days.map(() => dayCol), { wpx: 56, wch: 8 }];
+
+  // 行事予定・地域研修行のセルに折り返しスタイルを設定
+  const noteRowIndices = [2, 3]; // 0-indexed: headerRow1=0, headerRow2=1, eventsRow=2, trainingRow=3
+  noteRowIndices.forEach((rowIdx) => {
+    days.forEach((_, colIdx) => {
+      const cellAddr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx + 1 });
+      if (ws[cellAddr]) {
+        ws[cellAddr].s = { alignment: { wrapText: true, vertical: 'top' } };
+      }
+    });
+  });
 
   // Style header rows (xlsx-js-style would be needed for full styling, basic version here)
   const wb = XLSX.utils.book_new();

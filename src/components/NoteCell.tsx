@@ -12,69 +12,70 @@ const NoteCell: React.FC<Props> = ({ value, onChange, isWeekend, isSunday, isTod
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (editing) {
       setDraft(value);
-      const el = textareaRef.current;
-      if (el) {
-        el.focus();
-        el.selectionStart = el.value.length;
-      }
+      setTimeout(() => textareaRef.current?.focus(), 0);
     }
   }, [editing, value]);
 
-  // テキストエリアの高さを内容に合わせて自動調整
+  // 編集エリア外クリックで閉じる
   useEffect(() => {
-    const el = textareaRef.current;
-    if (el) {
-      el.style.height = 'auto';
-      el.style.height = `${el.scrollHeight}px`;
-    }
-  }, [draft]);
+    if (!editing) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        commit();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [editing, draft]);
 
   const commit = () => {
     onChange(draft);
     setEditing(false);
   };
 
-  const baseBg = isSunday ? 'bg-red-50/60' : isWeekend ? 'bg-blue-50/40' : 'bg-white';
-  const lineCount = value ? value.split('\n').length : 0;
-
-  if (editing) {
-    return (
-      <textarea
-        ref={textareaRef}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          // Shift+Enter で改行、Enter だけは保存
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            commit();
-          }
-          if (e.key === 'Escape') setEditing(false);
-        }}
-        rows={Math.max(2, draft.split('\n').length)}
-        className={`w-full min-h-8 px-1 py-0.5 text-[10px] border border-pink-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-400 resize-none overflow-hidden leading-4 ${baseBg}`}
-      />
-    );
-  }
+  const baseBg = isSunday ? 'bg-red-50' : isWeekend ? 'bg-blue-50' : 'bg-white';
 
   return (
-    <div
-      onClick={() => setEditing(true)}
-      title="クリックで編集（Shift+Enterで改行）"
-      className={`w-full min-h-8 px-1 py-0.5 text-[10px] rounded cursor-pointer leading-4
-        ${value ? 'text-gray-700 font-medium whitespace-pre-wrap break-words' : 'text-gray-300 flex items-center'}
-        ${baseBg} hover:bg-pink-50
-        ${isToday ? 'ring-1 ring-inset ring-yellow-400' : ''}
-      `}
-    >
-      {value || '・'}
-      {lineCount > 1 && (
-        <span className="block text-[9px] text-gray-400 mt-0.5">{lineCount}行</span>
+    <div ref={wrapperRef} className="relative w-full h-full">
+      {/* 縦書き表示エリア */}
+      <div
+        onClick={() => setEditing(true)}
+        title="クリックで編集"
+        className={`w-full min-h-8 flex items-start justify-center py-1 cursor-pointer text-[10px]
+          ${value ? 'text-gray-700 font-medium' : 'text-gray-300'}
+          ${baseBg} hover:bg-pink-50
+          ${isToday ? 'ring-1 ring-inset ring-yellow-400' : ''}
+        `}
+        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+      >
+        {value || '・'}
+      </div>
+
+      {/* 編集ポップアップ（横書き） */}
+      {editing && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-40 bg-white border border-pink-300 rounded-lg shadow-lg p-1.5 w-36">
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
+              if (e.key === 'Escape') setEditing(false);
+            }}
+            rows={3}
+            placeholder="Shift+Enterで改行"
+            className="w-full text-[10px] border border-gray-200 rounded px-1 py-0.5 resize-none focus:outline-none focus:ring-1 focus:ring-pink-300 leading-4"
+          />
+          <div className="flex justify-end gap-1 mt-1">
+            <button onClick={() => setEditing(false)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1">取消</button>
+            <button onClick={commit} className="text-[10px] bg-pink-500 text-white rounded px-2 py-0.5 hover:bg-pink-600">確定</button>
+          </div>
+        </div>
       )}
     </div>
   );
