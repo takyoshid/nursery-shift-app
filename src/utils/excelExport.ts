@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import type { Staff, ShiftEntry } from '../types';
 
 function getDaysInMonth(year: number, month: number): Date[] {
@@ -19,6 +19,10 @@ function formatDate(date: Date): string {
 
 const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
+// textRotation: 255 = Excel の縦書き（CJK文字を縦に積む）
+const VERTICAL_STYLE = { alignment: { textRotation: 255, vertical: 'center', horizontal: 'center' } };
+const CENTER_STYLE   = { alignment: { vertical: 'center', horizontal: 'center' } };
+
 export function exportToExcel(
   staffList: Staff[],
   shifts: ShiftEntry[],
@@ -29,12 +33,9 @@ export function exportToExcel(
 ): void {
   const days = getDaysInMonth(year, month);
 
-  // Build header row: [スタッフ名, ...日付ラベル, 出勤日数]
-  const headerRow1 = ['スタッフ名', ...days.map((d) => `${d.getDate()}日`), '出勤日数'];
-  const headerRow2 = ['役職', ...days.map((d) => DOW_LABELS[d.getDay()]), ''];
-
-  // 行事予定・地域研修行
-  const eventsRow  = ['行事予定',   ...days.map((d) => events[formatDate(d)]   ?? ''), ''];
+  const headerRow1  = ['スタッフ名', ...days.map((d) => `${d.getDate()}日`), '出勤日数'];
+  const headerRow2  = ['役職',       ...days.map((d) => DOW_LABELS[d.getDay()]), ''];
+  const eventsRow   = ['行事予定',   ...days.map((d) => events[formatDate(d)]   ?? ''), ''];
   const trainingRow = ['地域・研修等', ...days.map((d) => training[formatDate(d)] ?? ''), ''];
 
   const shiftMap: Record<string, Record<string, string>> = {};
@@ -49,9 +50,7 @@ export function exportToExcel(
     const cells = days.map((d) => {
       const dateStr = formatDate(d);
       const shift = staffShifts[dateStr] ?? '';
-      if (shift && shift !== '休み' && shift !== '有休') {
-        workDays++;
-      }
+      if (shift && shift !== '休み' && shift !== '有休') workDays++;
       return shift;
     });
     return [staff.name, ...cells, workDays];
@@ -60,25 +59,30 @@ export function exportToExcel(
   const wsData = [headerRow1, headerRow2, eventsRow, trainingRow, ...dataRows];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  // 列幅: 画面の w-12 (48px) に合わせて統一。wpx=48, wch=6 を全日付列に適用
-  const dayCol = { wpx: 48, wch: 6 };
-  ws['!cols'] = [{ wpx: 90, wch: 12 }, ...days.map(() => dayCol), { wpx: 56, wch: 8 }];
+  // 列幅を統一 (画面 w-12 = 48px に合わせる)
+  const dayCol = { wpx: 48 };
+  ws['!cols'] = [{ wpx: 90 }, ...days.map(() => dayCol), { wpx: 56 }];
 
-  // 行事予定・地域研修行のセルに折り返しスタイルを設定
-  const noteRowIndices = [2, 3]; // 0-indexed: headerRow1=0, headerRow2=1, eventsRow=2, trainingRow=3
+  // 行事予定・地域研修行のデータセルに縦書きスタイルを適用
+  const noteRowIndices = [2, 3]; // eventsRow=2, trainingRow=3
   noteRowIndices.forEach((rowIdx) => {
     days.forEach((_, colIdx) => {
-      const cellAddr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx + 1 });
-      if (ws[cellAddr]) {
-        ws[cellAddr].s = { alignment: { wrapText: true, vertical: 'top' } };
-      }
+      const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx + 1 });
+      if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+      ws[addr].s = VERTICAL_STYLE;
     });
   });
 
-  // Style header rows (xlsx-js-style would be needed for full styling, basic version here)
+  // シフトセルを中央揃えに
+  for (let rowIdx = 4; rowIdx < 4 + staffList.length; rowIdx++) {
+    days.forEach((_, colIdx) => {
+      const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx + 1 });
+      if (ws[addr]) ws[addr].s = CENTER_STYLE;
+    });
+  }
+
   const wb = XLSX.utils.book_new();
-  const sheetName = `${year}年${month + 1}月`;
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.utils.book_append_sheet(wb, ws, `${year}年${month + 1}月`);
 
   const fileName = `保育園シフト表_${year}年${String(month + 1).padStart(2, '0')}月.xlsx`;
   XLSX.writeFile(wb, fileName);
