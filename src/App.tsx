@@ -74,6 +74,20 @@ const App: React.FC = () => {
     [data, persist]
   );
 
+  const handleLeaveReset = useCallback(
+    ({ year, month }: { year: number; month: number }) => {
+      const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const leaveRequests = Object.fromEntries(
+        Object.entries(data.leaveRequests).map(([id, dates]) => [
+          id,
+          dates.filter((d) => !d.startsWith(prefix)),
+        ])
+      );
+      persist({ ...data, leaveRequests });
+    },
+    [data, persist]
+  );
+
   const handleApplyLeave = useCallback(
     ({ year, month }: { year: number; month: number }) => {
       const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -216,6 +230,7 @@ const App: React.FC = () => {
             leaveRequests={data.leaveRequests}
             onLeaveToggle={handleLeaveToggle}
             onApply={handleApplyLeave}
+            onReset={handleLeaveReset}
           />
         ) : view === 'staff' ? (
           <StaffManager

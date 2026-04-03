@@ -8,6 +8,7 @@ interface Props {
   leaveRequests: Record<string, string[]>;
   onLeaveToggle: (staffId: string, date: string) => void;
   onApply: (month: { year: number; month: number }) => void;
+  onReset: (month: { year: number; month: number }) => void;
 }
 
 const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -25,12 +26,13 @@ function formatDate(date: Date): string {
 }
 
 const LeaveRequests: React.FC<Props> = ({
-  staffList, shifts, leaveRequests, onLeaveToggle, onApply,
+  staffList, shifts, leaveRequests, onLeaveToggle, onApply, onReset,
 }) => {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [applied, setApplied] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const days = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const today = formatDate(now);
@@ -67,6 +69,12 @@ const LeaveRequests: React.FC<Props> = ({
     setApplied(true);
   };
 
+  const handleReset = () => {
+    onReset({ year, month });
+    setConfirmReset(false);
+    setApplied(false);
+  };
+
   // 希望合計件数（今月）
   const totalRequests = staffList.reduce((sum, s) => sum + countRequests(s.id), 0);
 
@@ -82,6 +90,24 @@ const LeaveRequests: React.FC<Props> = ({
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500">今月の希望: 計 <strong>{totalRequests}</strong> 件</span>
+
+          {/* リセットボタン */}
+          {confirmReset ? (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-red-500 font-medium">今月の希望を全削除？</span>
+              <button onClick={handleReset} className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded-lg transition">削除</button>
+              <button onClick={() => setConfirmReset(false)} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1.5 rounded-lg transition">取消</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmReset(true)}
+              disabled={totalRequests === 0}
+              className="px-3 py-2 rounded-lg text-sm font-medium transition bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              🗑 リセット
+            </button>
+          )}
+
           <button
             onClick={handleApply}
             disabled={totalRequests === 0}
