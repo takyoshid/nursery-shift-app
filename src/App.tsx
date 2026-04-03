@@ -53,6 +53,14 @@ const App: React.FC = () => {
     [data, persist]
   );
 
+  // Note handlers
+  const handleNoteChange = useCallback(
+    (type: 'events' | 'training', date: string, value: string) => {
+      persist({ ...data, [type]: { ...data[type], [date]: value } });
+    },
+    [data, persist]
+  );
+
   // Shift handlers
   const handleShiftChange = useCallback(
     (staffId: string, date: string, shiftType: ShiftType) => {
@@ -139,7 +147,10 @@ const App: React.FC = () => {
           <ShiftTable
             staffList={data.staffList}
             shifts={data.shifts}
+            events={data.events}
+            training={data.training}
             onShiftChange={handleShiftChange}
+            onNoteChange={handleNoteChange}
           />
         ) : view === 'staff' ? (
           <StaffManager

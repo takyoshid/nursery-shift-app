@@ -2,12 +2,16 @@ import React, { useMemo } from 'react';
 import type { Staff, ShiftEntry, ShiftType, StaffGroup } from '../types';
 import { GROUP_STYLES } from '../types';
 import ShiftCell from './ShiftCell';
+import NoteCell from './NoteCell';
 import { exportToExcel } from '../utils/excelExport';
 
 interface Props {
   staffList: Staff[];
   shifts: ShiftEntry[];
+  events: Record<string, string>;
+  training: Record<string, string>;
   onShiftChange: (staffId: string, date: string, shiftType: ShiftType) => void;
+  onNoteChange: (type: 'events' | 'training', date: string, value: string) => void;
 }
 
 const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -45,7 +49,7 @@ function countWorkDays(staffId: string, shifts: ShiftEntry[], dates: Date[]): nu
   ).length;
 }
 
-const ShiftTable: React.FC<Props> = ({ staffList, shifts, onShiftChange }) => {
+const ShiftTable: React.FC<Props> = ({ staffList, shifts, events, training, onShiftChange, onNoteChange }) => {
   const now = new Date();
   const [year, setYear] = React.useState(now.getFullYear());
   const [month, setMonth] = React.useState(now.getMonth());
@@ -196,6 +200,36 @@ const ShiftTable: React.FC<Props> = ({ staffList, shifts, onShiftChange }) => {
               </tr>
             </thead>
             <tbody>
+              {/* 行事予定・地域研修 行 */}
+              {(
+                [
+                  { key: 'events' as const, label: '行事予定', bg: 'bg-rose-50', text: 'text-rose-700', headerBg: 'bg-rose-100' },
+                  { key: 'training' as const, label: '地域・研修等', bg: 'bg-teal-50', text: 'text-teal-700', headerBg: 'bg-teal-100' },
+                ] as const
+              ).map(({ key, label, bg, text, headerBg }) => (
+                <tr key={key} className={bg}>
+                  <td className={`sticky left-0 z-10 border-b border-r border-pink-100 px-3 py-1 text-xs font-bold min-w-[120px] ${headerBg} ${text}`}>
+                    {label}
+                  </td>
+                  {days.map((d) => {
+                    const dateStr = formatDate(d);
+                    const dow = d.getDay();
+                    return (
+                      <td key={dateStr} className="border-b border-r border-pink-100 p-0.5 w-12">
+                        <NoteCell
+                          value={key === 'events' ? (events[dateStr] ?? '') : (training[dateStr] ?? '')}
+                          onChange={(v) => onNoteChange(key, dateStr, v)}
+                          isWeekend={dow === 6}
+                          isSunday={dow === 0}
+                          isToday={dateStr === today}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td className={`sticky right-0 z-10 border-b border-l border-pink-100 min-w-[56px] ${headerBg}`} />
+                </tr>
+              ))}
+
               {staffList.map((staff, sIdx) => {
                 const staffShifts = shiftMap[staff.id] ?? {};
                 const workDays = countWorkDays(staff.id, shifts, days);

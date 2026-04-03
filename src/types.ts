@@ -33,4 +33,6 @@ export interface ShiftEntry {
 export interface AppData {
   staffList: Staff[];
   shifts: ShiftEntry[];
+  events: Record<string, string>;   // date -> 行事予定テキスト
+  training: Record<string, string>; // date -> 地域・研修等テキスト
 }
