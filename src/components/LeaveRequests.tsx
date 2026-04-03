@@ -60,11 +60,25 @@ const LeaveRequests: React.FC<Props> = ({
     else setMonth(m => m + 1);
   };
 
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+
   // この月の希望日数カウント
   const countRequests = (staffId: string) => {
     const dates = leaveRequests[staffId] ?? [];
-    return dates.filter(d => d.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)).length;
+    return dates.filter(d => d.startsWith(monthPrefix)).length;
   };
+
+  // この月に「希望→反映」で設定された休みの件数（反映取消ボタンの有効/無効判定用）
+  const appliedCount = useMemo(() => {
+    const requestedSet = new Set(
+      Object.entries(leaveRequests).flatMap(([staffId, dates]) =>
+        dates.filter(d => d.startsWith(monthPrefix)).map(d => `${staffId}_${d}`)
+      )
+    );
+    return shifts.filter(
+      s => s.shiftType === '休み' && requestedSet.has(`${s.staffId}_${s.date}`)
+    ).length;
+  }, [shifts, leaveRequests, monthPrefix]);
 
   const handleApply = () => {
     onApply({ year, month });
@@ -126,7 +140,7 @@ const LeaveRequests: React.FC<Props> = ({
           ) : (
             <button
               onClick={() => setConfirmUnapply(true)}
-              disabled={totalRequests === 0}
+              disabled={appliedCount === 0}
               className="px-3 py-2 rounded-lg text-sm font-medium transition bg-orange-50 text-orange-500 hover:bg-orange-100 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ↩ 反映取消
