@@ -1,5 +1,4 @@
 import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
 import type { Staff, ShiftEntry } from '../types';
 
 function getDaysInMonth(year: number, month: number): Date[] {
@@ -107,7 +106,11 @@ export async function exportToExcel(
 
   // ダウンロード
   const buffer = await wb.xlsx.writeBuffer();
-  saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    `保育園シフト表_${year}年${String(month + 1).padStart(2, '0')}月.xlsx`
-  );
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `保育園シフト表_${year}年${String(month + 1).padStart(2, '0')}月.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
