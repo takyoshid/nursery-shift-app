@@ -1,4 +1,4 @@
-import XLSX from 'xlsx-js-style';
+import * as XLSX from 'xlsx-js-style';
 import type { Staff, ShiftEntry } from '../types';
 
 function getDaysInMonth(year: number, month: number): Date[] {
@@ -56,30 +56,29 @@ export function exportToExcel(
     return [staff.name, ...cells, workDays];
   });
 
-  const wsData = [headerRow1, headerRow2, eventsRow, trainingRow, ...dataRows];
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const allRows = [headerRow1, headerRow2, eventsRow, trainingRow, ...dataRows];
+
+  // セルを手動構築してスタイルを確実に適用
+  const ws: XLSX.WorkSheet = {};
+  let maxC = 0;
+  allRows.forEach((row, r) => {
+    row.forEach((val, c) => {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const isNoteDataCell = (r === 2 || r === 3) && c >= 1 && c <= days.length;
+      const isShiftDataCell = r >= 4 && c >= 1 && c <= days.length;
+      ws[addr] = {
+        t: typeof val === 'number' ? 'n' : 's',
+        v: val,
+        s: isNoteDataCell ? VERTICAL_STYLE : isShiftDataCell ? CENTER_STYLE : {},
+      };
+      if (c > maxC) maxC = c;
+    });
+  });
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: allRows.length - 1, c: maxC } });
 
   // 列幅を統一 (画面 w-12 = 48px に合わせる)
   const dayCol = { wpx: 48 };
   ws['!cols'] = [{ wpx: 90 }, ...days.map(() => dayCol), { wpx: 56 }];
-
-  // 行事予定・地域研修行のデータセルに縦書きスタイルを適用
-  const noteRowIndices = [2, 3]; // eventsRow=2, trainingRow=3
-  noteRowIndices.forEach((rowIdx) => {
-    days.forEach((_, colIdx) => {
-      const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx + 1 });
-      if (!ws[addr]) ws[addr] = { t: 's', v: '' };
-      ws[addr].s = VERTICAL_STYLE;
-    });
-  });
-
-  // シフトセルを中央揃えに
-  for (let rowIdx = 4; rowIdx < 4 + staffList.length; rowIdx++) {
-    days.forEach((_, colIdx) => {
-      const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx + 1 });
-      if (ws[addr]) ws[addr].s = CENTER_STYLE;
-    });
-  }
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `${year}年${month + 1}月`);
